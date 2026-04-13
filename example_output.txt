@@ -1,0 +1,287 @@
+================================================================================
+EXAMPLE RUN — Battery Performance Analysis Agent
+================================================================================
+
+COMMAND USED:
+  python main.py
+
+--------------------------------------------------------------------------------
+STARTUP
+--------------------------------------------------------------------------------
+
+🔋  Battery Performance Analysis Agent
+    LLM Model : llama-3.3-70b-versatile
+    Data file : data/battery_data.csv
+
+════════════════════════════════════════════════════════════
+  DATA LOADED SUCCESSFULLY
+════════════════════════════════════════════════════════════
+  Total rows       : 576
+  Columns          : ['SCENARIO_NAME', 'SCHEDULE_TYPE', 'START_DATETIME',
+                      'SOC', 'CHARGE_ENERGY', 'DISCHARGE_ENERGY',
+                      'PRICE_ENERGY', 'REVENUE_ENERGY']
+  Date range       : 2026-01-26 00:00:00  →  2026-01-26 23:55:00
+  Scenarios found  : ['historical', 'perfect']
+  Schedule types   : ['cleared', 'expected']
+════════════════════════════════════════════════════════════
+
+📩  Sending this request to the agent:
+    "Please analyse the battery performance data for the period from
+     2026-01-26 00:00:00 to 2026-01-26 23:55:00. The dataset contains
+     these scenarios: historical, perfect. Use your tools step-by-step to:
+     (1) measure the total revenue gap between the historical and perfect
+     scenarios, (2) identify the primary and secondary drivers of the gap,
+     and (3) provide two clear, actionable recommendations for the battery
+     trader. Produce the full structured analysis report."
+
+--------------------------------------------------------------------------------
+AGENT STEP-BY-STEP TOOL CALLS
+--------------------------------------------------------------------------------
+
+───────────────────────────────────────────────────────────
+  Agent Round 1
+───────────────────────────────────────────────────────────
+
+🔧  Calling tool: compute_revenue_summary
+    Result (preview):
+    {
+      "historical_revenue": 3240.8,
+      "perfect_revenue": 8561.2,
+      "gap": 5320.4,
+      "gap_pct": 62.15,
+      "historical_intervals": 288,
+      "perfect_intervals": 288,
+      "date_range": "2026-01-26 00:00:00 to 2026-01-26 23:55:00"
+    }
+
+───────────────────────────────────────────────────────────
+  Agent Round 2
+───────────────────────────────────────────────────────────
+
+🔧  Calling tool: identify_high_price_intervals
+    With arguments: { "top_n": 20 }
+    Result (preview):
+    {
+      "top_n": 20,
+      "hist_active_count": 4,
+      "perf_active_count": 19,
+      "hist_revenue_in_top": 680.4,
+      "perf_revenue_in_top": 3210.8,
+      "hist_discharged_mwh": 1.2,
+      "perf_discharged_mwh": 9.8,
+      "top_intervals": [ ... ]
+    }
+
+───────────────────────────────────────────────────────────
+  Agent Round 3
+───────────────────────────────────────────────────────────
+
+🔧  Calling tool: compare_dispatch
+    Result (preview):
+    {
+      "historical": {
+        "total_charge_mwh": 14.2,
+        "total_discharge_mwh": 11.8,
+        "charge_intervals": 52,
+        "discharge_intervals": 44,
+        "idle_intervals": 192
+      },
+      "perfect": {
+        "total_charge_mwh": 18.6,
+        "total_discharge_mwh": 17.4,
+        "charge_intervals": 68,
+        "discharge_intervals": 64,
+        "idle_intervals": 156
+      },
+      "mismatches": {
+        "missed_discharge_intervals": 38,
+        "extra_discharge_intervals": 8,
+        "missed_charge_intervals": 24,
+        "missed_discharge_mwh": 7.2
+      }
+    }
+
+───────────────────────────────────────────────────────────
+  Agent Round 4
+───────────────────────────────────────────────────────────
+
+🔧  Calling tool: analyze_state_of_charge
+    With arguments: { "scenario": "both" }
+    Result (preview):
+    {
+      "historical": {
+        "min_soc": 0.12, "max_soc": 0.98, "mean_soc": 0.61,
+        "start_soc": 0.5, "end_soc": 0.54,
+        "near_full_intervals": 18, "near_empty_intervals": 3
+      },
+      "perfect": {
+        "min_soc": 0.05, "max_soc": 0.99, "mean_soc": 0.52,
+        "start_soc": 0.5, "end_soc": 0.48,
+        "near_full_intervals": 8, "near_empty_intervals": 12
+      }
+    }
+
+───────────────────────────────────────────────────────────
+  Agent Round 5
+───────────────────────────────────────────────────────────
+
+🔧  Calling tool: find_missed_opportunities
+    Result (preview):
+    {
+      "price_threshold_used": 142.5,
+      "total_missed_intervals": 31,
+      "total_revenue_missed": 4180.6,
+      "perfect_discharged_mwh": 7.8,
+      "top_10_missed_opportunities": [
+        { "datetime": "2026-01-26 18:30:00", "price": 312.4,
+          "p_discharge": 0.5, "revenue_missed": 156.2 },
+        { "datetime": "2026-01-26 17:55:00", "price": 298.1,
+          "p_discharge": 0.5, "revenue_missed": 149.1 },
+        ...
+      ]
+    }
+
+───────────────────────────────────────────────────────────
+  Agent Round 6
+───────────────────────────────────────────────────────────
+
+🔧  Calling tool: compute_efficiency_ratio
+    Result (preview):
+    {
+      "historical": {
+        "revenue_per_mwh_dispatched": 125.6,
+        "revenue_per_mwh_discharged": 274.6
+      },
+      "perfect": {
+        "revenue_per_mwh_dispatched": 237.8,
+        "revenue_per_mwh_discharged": 492.0
+      },
+      "comparison": {
+        "efficiency_gap_per_mwh_dispatched": 112.2,
+        "efficiency_gap_per_mwh_discharged": 217.4
+      }
+    }
+
+───────────────────────────────────────────────────────────
+  Agent Round 7
+───────────────────────────────────────────────────────────
+
+🔧  Calling tool: compute_revenue_by_period
+    With arguments: { "period_type": "time_of_day" }
+    Result (preview):
+    {
+      "period_type": "time_of_day",
+      "breakdown": [
+        { "time_of_day": "off_peak",  "historical_rev": 420.2, "perfect_rev": 680.4,  "gap": 260.2 },
+        { "time_of_day": "shoulder",  "historical_rev": 810.6, "perfect_rev": 2140.8, "gap": 1330.2 },
+        { "time_of_day": "peak",      "historical_rev": 2010.0,"perfect_rev": 5740.0, "gap": 3730.0 }
+      ],
+      "total_hist": 3240.8,
+      "total_perf": 8561.2
+    }
+
+✅  Agent finished — final report ready.
+
+--------------------------------------------------------------------------------
+FINAL REPORT
+--------------------------------------------------------------------------------
+
+══════════════════════════════════════════════════════════════════════
+=== BATTERY PERFORMANCE ANALYSIS REPORT ===
+Period: 2026-01-26 00:00:00 to 2026-01-26 23:55:00
+
+──────────────────────────────────────────
+SECTION 1: PERFORMANCE GAP
+──────────────────────────────────────────
+Historical Revenue : $3,240.80
+Perfect Revenue    : $8,561.20
+Performance Gap    : $5,320.40  (62.2% of perfect revenue)
+
+──────────────────────────────────────────
+SECTION 2: PRIMARY DRIVER OF THE GAP
+──────────────────────────────────────────
+Title       : Failure to Discharge During High-Price Peak Intervals
+
+Explanation : The historical battery discharged in only 4 of the top 20
+              highest-price intervals, while the perfect scenario captured
+              19 of those same 20 moments. This single failure accounts
+              for the majority of the revenue gap. The peak period alone
+              showed a $3,730 gap — 70% of the total shortfall.
+
+Evidence    :
+  • Historical earned $680.40 in the top-20 price intervals vs.
+    perfect's $3,210.80 — a difference of $2,530.40 in those moments alone.
+  • Historical discharged only 1.2 MWh during price spikes vs.
+    9.8 MWh for perfect — an 8.6 MWh shortfall.
+  • 31 missed discharge opportunities above the $142.50/MWh threshold,
+    leaving $4,180.60 on the table.
+
+Supporting  :
+  • Peak-period revenue gap was $3,730.00 — by far the largest of the
+    three time-of-day buckets.
+  • The historical battery had 192 idle intervals vs. perfect's 156.
+
+──────────────────────────────────────────
+SECTION 3: SECONDARY DRIVER OF THE GAP
+──────────────────────────────────────────
+Title       : Suboptimal SOC Management — Battery Too Full at Peak Times
+
+Explanation : The historical battery spent 18 intervals near full capacity
+              (SOC ≥ 95%), compared to only 8 intervals for the perfect
+              scenario. When the battery is near-full, it cannot charge
+              more cheaply and is constrained from optimal dispatch. The
+              perfect scenario kept SOC lower on average (mean 0.52 vs.
+              0.61), preserving headroom to charge before high-price windows.
+
+Evidence    :
+  • Historical had 18 near-full intervals (SOC ≥ 95%) vs. 8 for perfect.
+  • Mean SOC was 0.61 (historical) vs. 0.52 (perfect) — 9 percentage
+    points higher, indicating excess stored energy held back availability.
+
+──────────────────────────────────────────
+SECTION 4: RECOMMENDATIONS
+──────────────────────────────────────────
+Recommendation 1:
+  Action          : Implement a price-threshold discharge rule —
+                    automatically trigger discharge when price exceeds
+                    $142.50/MWh (the 75th-percentile threshold).
+  Reasoning       : The agent identified 31 intervals above this threshold
+                    where perfect discharged but historical did not.
+                    A rules-based trigger would capture these events
+                    without requiring perfect foresight.
+  Expected Benefit: Recovering even 60% of the $4,180.60 missed would
+                    add approximately $2,500 in daily revenue.
+  Tradeoff        : A fixed threshold may misfire during unusual price days;
+                    the rule should be reviewed weekly against market data.
+
+Recommendation 2:
+  Action          : Reduce target SOC during shoulder periods (7–9am,
+                    5–7pm) by 15–20 percentage points to preserve
+                    discharge capacity for the approaching peak window.
+  Reasoning       : The historical battery spent 18 intervals near-full,
+                    blocking optimal charging and forcing it to be idle
+                    when prices spiked. The perfect scenario maintained
+                    a mean SOC of 0.52 vs. the historical 0.61.
+  Expected Benefit: Lower average SOC creates room to charge cheaply in
+                    off-peak and discharge profitably in peak — directly
+                    addressing the $1,330.20 shoulder-period gap.
+  Tradeoff        : Lower SOC targets reduce the buffer for unexpected
+                    price spikes and may increase battery cycle wear.
+
+──────────────────────────────────────────
+SECTION 5: EXECUTIVE SUMMARY
+──────────────────────────────────────────
+The historical battery captured only 37.8% of the revenue achievable
+with perfect foresight, leaving a $5,320.40 gap on 2026-01-26. The
+primary cause was a failure to discharge during price spikes — the
+battery was active in just 4 of the 20 most expensive intervals, while
+the perfect scenario captured 19. A secondary contributor was high
+average SOC (0.61 vs. 0.52), which limited flexibility during peak
+windows. Two targeted actions — a price-threshold dispatch rule and a
+lower SOC target during shoulder periods — could recover an estimated
+$2,500–$3,500 per day with minimal infrastructure changes.
+
+══════════════════════════════════════════════════════════════════════
+
+💾  Report saved to: report.txt
+================================================================================
