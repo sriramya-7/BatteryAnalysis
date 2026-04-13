@@ -71,7 +71,7 @@ YOU RUN:  python main.py
 ## 📁 File Guide
 
 ```
-AssessmentProject2/
+BatteryAnalysis/
 │
 ├── main.py           ← START HERE — runs everything
 ├── config.py         ← Settings (API key path, column names, model)
